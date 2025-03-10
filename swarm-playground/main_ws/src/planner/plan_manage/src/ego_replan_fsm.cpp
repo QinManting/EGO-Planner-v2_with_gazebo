@@ -102,6 +102,7 @@ namespace ego_planner
       {
         goto force_return; // return;
       }
+      // 收到里程计消息后，开始等待目标点
       changeFSMExecState(WAIT_TARGET, "FSM");
       break;
     }
@@ -112,6 +113,7 @@ namespace ego_planner
         goto force_return; // return;
       else
       {
+        // 当有全局轨迹have_target_且用当前点规划出轨迹planNextWaypoint(end_wp)have_trigger_
         changeFSMExecState(SEQUENTIAL_START, "FSM");
       }
       break;
@@ -119,11 +121,13 @@ namespace ego_planner
 
     case SEQUENTIAL_START: // for swarm or single drone with drone_id = 0
     {
+      // have_recv_pre_agent_表示是否收到了前一个无人机的轨迹
       if (planner_manager_->pp_.drone_id <= 0 || (planner_manager_->pp_.drone_id >= 1 && have_recv_pre_agent_))
       {
-        bool success = planFromGlobalTraj(10); // zx-todo
+        bool success = planFromGlobalTraj(10); // zx-todo 10是尝试规划的次数
         if (success)
         {
+          // 局部规划成功，进入执行轨迹状态
           changeFSMExecState(EXEC_TRAJ, "FSM");
         }
         else
@@ -454,13 +458,14 @@ namespace ego_planner
     start_acc_.setZero();
 
     bool flag_random_poly_init;
-    if (timesOfConsecutiveStateCalls().first == 1)
+    if (timesOfConsecutiveStateCalls().first == 1) //当前状态第一次尝试执行
       flag_random_poly_init = false;
     else
       flag_random_poly_init = true;
 
     for (int i = 0; i < trial_times; i++)
     {
+      // 从全局轨迹规划上进行局部规划
       if (callReboundReplan(true, flag_random_poly_init))
       {
         return true;
@@ -507,10 +512,12 @@ namespace ego_planner
     bool success = false;
     std::vector<Eigen::Vector3d> one_pt_wps;
     one_pt_wps.push_back(next_wp);
+    // 设置全局轨迹
     success = planner_manager_->planGlobalTrajWaypoints(
         odom_pos_, odom_vel_, Eigen::Vector3d::Zero(),
-        one_pt_wps, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
+        one_pt_wps, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero()); 
 
+    // 可视化目标点
     // visualization_->displayGoalPoint(next_wp, Eigen::Vector4d(0, 0.5, 0.5, 1), 0.3, 0);
 
     if (success)
@@ -530,8 +537,10 @@ namespace ego_planner
       have_new_target_ = true;
 
       /*** FSM ***/
+      // 如果此次规划前已经在执行轨迹，则需要重新规划
       if (exec_state_ != WAIT_TARGET)
       {
+        // 不在执行轨迹状态，程序执行就停在此处
         while (exec_state_ != EXEC_TRAJ)
         {
           ros::spinOnce();

@@ -422,6 +422,7 @@ namespace ego_planner
     return false;
   }
 
+  // TODO: 由路点生成全局轨迹
   bool EGOPlannerManager::planGlobalTrajWaypoints(
       const Eigen::Vector3d &start_pos, const Eigen::Vector3d &start_vel,
       const Eigen::Vector3d &start_acc, const std::vector<Eigen::Vector3d> &waypoints,
@@ -434,13 +435,14 @@ namespace ego_planner
     tailState << waypoints.back(), end_vel, end_acc;
     Eigen::MatrixXd innerPts;
 
+    // 设置路点
     if (waypoints.size() > 1)
     {
 
       innerPts.resize(3, waypoints.size() - 1);
       for (int i = 0; i < (int)waypoints.size() - 1; ++i)
       {
-        innerPts.col(i) = waypoints[i];
+        innerPts.col(i) = waypoints[i]; 
       }
     }
     else
@@ -453,7 +455,7 @@ namespace ego_planner
 
     globalMJO.reset(headState, tailState, waypoints.size());
 
-    double des_vel = pp_.max_vel_ / 1.5;
+    double des_vel = pp_.max_vel_ / 1.5; //期望速度
     Eigen::VectorXd time_vec(waypoints.size());
 
     for (int j = 0; j < 2; ++j)
@@ -463,9 +465,11 @@ namespace ego_planner
         time_vec(i) = (i == 0) ? (waypoints[0] - start_pos).norm() / des_vel
                                : (waypoints[i] - waypoints[i - 1]).norm() / des_vel;
       }
-
+      
+      // 生成全局轨迹（MINCO）
       globalMJO.generate(innerPts, time_vec);
 
+      // 轨迹速度小于最大速度
       if (globalMJO.getTraj().getMaxVelRate() < pp_.max_vel_ ||
           start_vel.norm() > pp_.max_vel_ ||
           end_vel.norm() > pp_.max_vel_)
@@ -485,6 +489,7 @@ namespace ego_planner
       des_vel /= 1.5;
     }
 
+    // 设置全局轨迹
     auto time_now = ros::Time::now();
     traj_.setGlobalTraj(globalMJO.getTraj(), time_now.toSec());
 

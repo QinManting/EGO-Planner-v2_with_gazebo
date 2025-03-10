@@ -5,12 +5,13 @@
 #include <std_msgs/Empty.h>
 #include <visualization_msgs/Marker.h>
 #include <ros/ros.h>
+#include <mavros_msgs/PositionTarget.h>
 
 using namespace Eigen;
 
 ros::Publisher pos_cmd_pub;
 
-quadrotor_msgs::PositionCommand cmd;
+mavros_msgs::PositionTarget cmd;
 // double pos_gain[3] = {0, 0, 0};
 // double vel_gain[3] = {0, 0, 0};
 
@@ -138,8 +139,9 @@ void publish_cmd(Vector3d p, Vector3d v, Vector3d a, Vector3d j, double y, doubl
 
   cmd.header.stamp = ros::Time::now();
   cmd.header.frame_id = "world";
-  cmd.trajectory_flag = quadrotor_msgs::PositionCommand::TRAJECTORY_STATUS_READY;
-  cmd.trajectory_id = traj_id_;
+  // cmd.trajectory_flag = quadrotor_msgs::PositionCommand::TRAJECTORY_STATUS_READY;
+  // cmd.trajectory_id = traj_id_;
+  cmd.coordinate_frame = mavros_msgs::PositionTarget::FRAME_LOCAL_NED;
 
   cmd.position.x = p(0);
   cmd.position.y = p(1);
@@ -147,14 +149,14 @@ void publish_cmd(Vector3d p, Vector3d v, Vector3d a, Vector3d j, double y, doubl
   cmd.velocity.x = v(0);
   cmd.velocity.y = v(1);
   cmd.velocity.z = v(2);
-  cmd.acceleration.x = a(0);
-  cmd.acceleration.y = a(1);
-  cmd.acceleration.z = a(2);
-  cmd.jerk.x = j(0);
-  cmd.jerk.y = j(1);
-  cmd.jerk.z = j(2);
+  cmd.acceleration_or_force.x = a(0);
+  cmd.acceleration_or_force.y = a(1);
+  cmd.acceleration_or_force.z = a(2);
+  // cmd.jerk.x = j(0);
+  // cmd.jerk.y = j(1);
+  // cmd.jerk.z = j(2);
   cmd.yaw = y;
-  cmd.yaw_dot = yd;
+  cmd.yaw_rate = yd;
   pos_cmd_pub.publish(cmd);
 
   last_pos_ = p;
@@ -317,7 +319,8 @@ int main(int argc, char **argv)
   ros::Subscriber poly_traj_sub = nh.subscribe("planning/trajectory", 10, polyTrajCallback);
   ros::Subscriber heartbeat_sub = nh.subscribe("heartbeat", 10, heartbeatCallback);
 
-  pos_cmd_pub = nh.advertise<quadrotor_msgs::PositionCommand>("/position_cmd", 50);
+  pos_cmd_pub = nh.advertise<mavros_msgs::PositionTarget>("/position_cmd", 50);
+  // pos_cmd_pub = nh.advertise<quadrotor_msgs::PositionCommand>("/position_cmd", 50);
 
   ros::Timer cmd_timer = nh.createTimer(ros::Duration(0.01), cmdCallback);
 

@@ -20,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
   traj_utils
   message_generation
   cv_bridge
+  mavros_msgs
 )
 
 # catkin_package(CATKIN_DEPENDS message_runtime)

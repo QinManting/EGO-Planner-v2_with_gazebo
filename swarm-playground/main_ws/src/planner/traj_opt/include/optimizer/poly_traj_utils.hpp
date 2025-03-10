@@ -35,7 +35,7 @@ namespace poly_traj
 
         inline int getOrder() const
         {
-            return 5;
+            return 5; //五阶多项式
         }
 
         inline double getDuration() const
@@ -1135,7 +1135,7 @@ namespace poly_traj
                           const Eigen::Matrix3d &tailState,
                           const int &pieceNum)
         {
-            N = pieceNum;
+            N = pieceNum; // 分段数量由路点数量决定
             headPVA = headState;
             tailPVA = tailState;
             T1.resize(N);
