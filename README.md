@@ -16,6 +16,8 @@ catkin_make
 
 ## Run
 
+运行QGC，使无人机起飞
+
 Terminal 1
 ```
 cd path_to_your_ws/
@@ -29,3 +31,5 @@ cd path_to_your_ws/
 source devel/setup.bash
 roslaunch ego_planner single_drone_exploration.launch 
 ```
+
+使用QGC切换到offboard模式，无人机即可开始按照规划路径飞行
