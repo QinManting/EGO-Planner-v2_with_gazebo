@@ -23,6 +23,7 @@ void GridMap::initMap(ros::NodeHandle &nh)
   node_.param("grid_map/fy", mp_.fy_, -1.0);
   node_.param("grid_map/cx", mp_.cx_, -1.0);
   node_.param("grid_map/cy", mp_.cy_, -1.0);
+  node_.param("grid_map/camera_height", mp_.camera_height_, 0.0);
 
   node_.param("grid_map/use_depth_filter", mp_.use_depth_filter_, true);
   node_.param("grid_map/depth_filter_tolerance", mp_.depth_filter_tolerance_, -1.0);
@@ -87,11 +88,12 @@ void GridMap::initMap(ros::NodeHandle &nh)
   md_.proj_points_cnt_ = 0;
   md_.cache_voxel_cnt_ = 0;
 
+  // 仿真中相机的在无人机Z轴上0.3m
+  // 0.1 构建的地图最下边在rviz显示中在xy平面以上
   md_.cam2body_ << 0.0, 0.0, 1.0, 0.0,
       -1.0, 0.0, 0.0, 0.0,
-      0.0, -1.0, 0.0, 0.0,
+      0.0, -1.0, 0.0, mp_.camera_height_,
       0.0, 0.0, 0.0, 1.0;
-
   /* init callback */
   depth_sub_.reset(new message_filters::Subscriber<sensor_msgs::Image>(node_, "grid_map/depth", 50));
   extrinsic_sub_ = node_.subscribe<nav_msgs::Odometry>(

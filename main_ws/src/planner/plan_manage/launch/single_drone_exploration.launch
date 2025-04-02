@@ -24,8 +24,9 @@
         <arg name="target2_x" default="10.0"/>
         <arg name="target2_y" default="0.0"/>
         <arg name="target2_z" default="1.5"/>
-        <arg name="target3_x" default="10.0"/>
-        <arg name="target3_y" default="-8.0"/>
+        <!-- 直接返回，在高度限制较低时，高度上可能会和墙体碰撞 -->
+        <arg name="target3_x" default="0.0"/>
+        <arg name="target3_y" default="0.0"/>
         <arg name="target3_z" default="1.5"/>
     </include>
 </launch>

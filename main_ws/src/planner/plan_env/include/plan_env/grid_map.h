@@ -49,6 +49,7 @@ struct MappingParameters
 
   /* camera parameters */
   double cx_, cy_, fx_, fy_;
+  double camera_height_;
 
   /* time out */
   double odom_depth_timeout_;
