@@ -351,7 +351,7 @@ void GridMap::cloudCallback(const sensor_msgs::PointCloud2ConstPtr &img)
 
   if (latest_cloud.points.size() == 0)
     return;
-
+  
   if (isnan(md_.camera_pos_(0)) || isnan(md_.camera_pos_(1)) || isnan(md_.camera_pos_(2)))
     return;
 
@@ -839,7 +839,7 @@ void GridMap::publishMap()
 {
 
   if (map_pub_.getNumSubscribers() <= 0)
-    return;
+    return;   
 
   Eigen::Vector3d heading = (md_.camera_r_m_ * md_.cam2body_.block<3, 3>(0, 0).transpose()).block<3, 1>(0, 0);
   pcl::PointCloud<pcl::PointXYZ> cloud;
@@ -851,13 +851,15 @@ void GridMap::publishMap()
         for (double zd = lbz + mp_.resolution_ / 2; zd <= ubz; zd += mp_.resolution_)
         {
           Eigen::Vector3d relative_dir = (Eigen::Vector3d(xd, yd, zd) - md_.camera_pos_);
-          if (heading.dot(relative_dir.normalized()) > 0.5)
-          {
-            if (md_.occupancy_buffer_[globalIdx2BufIdx(pos2GlobalIdx(Eigen::Vector3d(xd, yd, zd)))] >= mp_.min_occupancy_log_)
+          // 只可视化前向的点云
+          // if (heading.dot(relative_dir.normalized()) > 0.5)
+          // {
+          //   if (md_.occupancy_buffer_[globalIdx2BufIdx(pos2GlobalIdx(Eigen::Vector3d(xd, yd, zd)))] >= mp_.min_occupancy_log_)
+          //     cloud.push_back(pcl::PointXYZ(xd, yd, zd));
+          // }
+          if (md_.occupancy_buffer_[globalIdx2BufIdx(pos2GlobalIdx(Eigen::Vector3d(xd, yd, zd)))] >= mp_.min_occupancy_log_)
               cloud.push_back(pcl::PointXYZ(xd, yd, zd));
-          }
         }
-
   cloud.width = cloud.points.size();
   cloud.height = 1;
   cloud.is_dense = true;
