@@ -40,7 +40,7 @@ namespace ego_planner
     no_replan_thresh_ = 0.5 * emergency_time_ * planner_manager_->pp_.max_vel_;
 
     /* callback */
-    exec_timer_ = nh.createTimer(ros::Duration(0.01), &EGOReplanFSM::execFSMCallback, this);
+    exec_timer_ = nh.createTimer(ros::Duration(0.01), &EGOReplanFSM::execFSMCallback, this);  // 每10ms执行一次状态机
     safety_timer_ = nh.createTimer(ros::Duration(0.05), &EGOReplanFSM::checkCollisionCallback, this);
 
     odom_sub_ = nh.subscribe("odom_world", 1, &EGOReplanFSM::odometryCallback, this);
@@ -91,7 +91,7 @@ namespace ego_planner
     if (fsm_num == 500)
     {
       fsm_num = 0;
-      printFSMExecState();
+      printFSMExecState(); //每5s打印一次状态
     }
 
     switch (exec_state_)
@@ -139,7 +139,7 @@ namespace ego_planner
 
       break;
     }
-
+    // 重新生成全局轨迹
     case GEN_NEW_TRAJ:
     {
 
@@ -155,7 +155,7 @@ namespace ego_planner
       }
       break;
     }
-
+    // 在当前轨迹的基础上重新规划局部轨迹
     case REPLAN_TRAJ:
     {
 
@@ -174,10 +174,11 @@ namespace ego_planner
     case EXEC_TRAJ:
     {
       /* determine if need to replan */
+      // TODO: 新增一个case，如果无人机当前位置远离轨迹参考位置，则重新生成全局轨迹
       LocalTrajData *info = &planner_manager_->traj_.local_traj;
       double t_cur = ros::Time::now().toSec() - info->start_time;
       t_cur = min(info->duration, t_cur);
-      Eigen::Vector3d pos = info->traj.getPos(t_cur);
+      Eigen::Vector3d pos = info->traj.getPos(t_cur); // 当前时刻在规划的轨迹上的位置
       bool touch_the_goal = ((local_target_pt_ - final_goal_).norm() < 1e-2);
 
       const PtsChk_t* chk_ptr = &planner_manager_->traj_.local_traj.pts_chk;
@@ -189,12 +190,12 @@ namespace ego_planner
       }
       else if ((target_type_ == TARGET_TYPE::PRESET_TARGET) &&
                (wpt_id_ < waypoint_num_ - 1) &&
-               (final_goal_ - pos).norm() < no_replan_thresh_) // case 2: assign the next waypoint
+               (final_goal_ - odom_pos_).norm() < no_replan_thresh_) // case 2: assign the next waypoint 当前目标点到达，规划下一个目标点
       {
         wpt_id_++;
         planNextWaypoint(wps_[wpt_id_]);
       }
-      else if ((t_cur > info->duration - 1e-2) && touch_the_goal) // case 3: the final waypoint reached
+      else if ((t_cur > info->duration - 1e-2) && touch_the_goal) // case 3: the final waypoint reached 到达终点
       {
         have_target_ = false;
         have_trigger_ = false;
@@ -209,11 +210,15 @@ namespace ego_planner
         /* The navigation task completed */
         changeFSMExecState(WAIT_TARGET, "FSM");
       }
-      else if (t_cur > replan_thresh_ || (!touch_the_goal && close_to_current_traj_end)) // case 3: time to perform next replan
+      else if (t_cur > replan_thresh_ || (!touch_the_goal && close_to_current_traj_end)) // case 4: time to perform next replan
       {
         changeFSMExecState(REPLAN_TRAJ, "FSM");
       }
       // ROS_ERROR("AAAA");
+      else if ((odom_pos_ - pos).norm() > no_replan_thresh_) // case 5: the drone is far away from the current trajectory
+      {
+        changeFSMExecState(GEN_NEW_TRAJ, "FSM");
+      }
 
       break;
     }
@@ -560,12 +565,15 @@ namespace ego_planner
     return success;
   }
 
+  // 移动当前目标点，直到找到一个不在障碍物中的点
   bool EGOReplanFSM::mondifyInCollisionFinalGoal()
   {
+    // 如果当前路点在障碍物中
     if (planner_manager_->grid_map_->getInflateOccupancy(final_goal_))
     {
       Eigen::Vector3d orig_goal = final_goal_;
       double t_step = planner_manager_->grid_map_->getResolution() / planner_manager_->pp_.max_vel_;
+      // 从全局轨迹的终点开始，向前搜索，直到找到一个不在障碍物中的点，代替这个路点
       for (double t = planner_manager_->traj_.global_traj.duration; t > 0; t -= t_step)
       {
         Eigen::Vector3d pt = planner_manager_->traj_.global_traj.traj.getPos(t);
@@ -746,6 +754,7 @@ namespace ego_planner
     bool far_away = true;
     for (int i = 0; i < cps_chk.cols(); ++i)
     {
+      // 当前轨迹控制点与当前无人机位置的距离小于规划范围的4/3，则接收该轨迹
       if ((cps_chk.col(i) - odom_pos_).norm() < planner_manager_->pp_.planning_horizen_ * 4 / 3) // close to me that can not be ignored
       {
         far_away = false;
